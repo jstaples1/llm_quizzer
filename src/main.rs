@@ -6,6 +6,8 @@ use serde_json::Value;
 //use std::error::Error;
 use tokio;
 
+const OPENAI_RESPONSE_TOKENS:i32 = 10;
+
 #[tokio::main]
 async fn main() {
     call_open_ai().await;
@@ -13,26 +15,43 @@ async fn main() {
 }
 
 async fn call_open_ai() {
-    println!("Making openai call");
+    println!("Making Open AI call");
 
     //let api_key = env::var("OPENAI_API_KEY").expect("No API key");
-    let _api_key = "<YOUR_GithubPersonalAccessToken_HERE>";
+    let api_key = "PROVIDE YOUR OWN OPENAI API KEY HERE";
 
     let client = Client::new();
     let response = client
-        .post("https://api.openai.com/v1/completions")
-        //.header("Authorization", api_key)
+        .post("https://api.openai.com/v1/chat/completions")
+        .header("Authorization", format!("Bearer {}", api_key))
+        //.header(AUTHORIZATION, "Bearer" + api_key)
          .json(&json!({
-           "prompt": "Hello",
-           "max_tokens": 10
+           //"prompt": "what is the tallest building in the",
+           "model": "gpt-3.5-turbo", 
+           "messages": [
+              //{"role": "system", "content": "You are a rust prog, skilled in explaining complex programming concepts with creative flair."},
+              {"role": "user", "content": "what is the tallest building in the world?"}
+           ],
+           "max_tokens": OPENAI_RESPONSE_TOKENS
         }))
         .send()
         .await
         .expect("Request failed");
 
-    print!("{}",response.text().await.unwrap().as_str());  
-    // Get the JSON content as a serde_json Value
-    //let json = response.expect::<serde_json::Value>();
+        let text = response.text().await.expect("response has no text");
+        
+
+        let json: Value = serde_json::from_str(&text).expect("json dserialization of Open AI response failed");
+
+        let choices = json.get("choices").unwrap();
+        let choice = choices.get(0).unwrap();
+        let message = choice.get("message").unwrap();
+        let content = message.get("content").unwrap();
+        println!("{}", content);
+        println!("-----------------");
+        println!("{}", text);
+        
+        
 
     
 }
